@@ -21,6 +21,39 @@ export default class Board extends React.Component {
       complete: React.createRef(),
     }
   }
+
+  componentDidMount() {
+    const containers = Object.values(this.swimlanes).map(ref => ref.current);
+    this.drake = Dragula(containers);
+
+    this.drake.on('drop', (el, target, source, sibling) => {
+      const clientId = el.getAttribute('data-id');
+      const targetStatus = this.getStatusByContainer(target);
+      this.drake.cancel(true);
+      this.updateStatus(clientId, targetStatus);
+    });
+  }
+
+  getStatusByContainer(container) {
+    if (container === this.swimlanes.backlog.current) return 'backlog';
+    if (container === this.swimlanes.inProgress.current) return 'in-progress';
+    if (container === this.swimlanes.complete.current) return 'complete';
+    return null;
+  }
+  updateStatus(clientId, newStatus) {
+    this.setState(prevState => {
+      const updaredClients = { backlog: [], inProgress: [], complete: [] };
+      const allClients = [...prevState.clients.backlog, ...prevState.clients.inProgress, ...prevState.clients.complete];
+      const clientToUpdate = allClients.map(client => client.id === clientId ? { ...client, status: newStatus } : client);
+      updaredClients.backlog = clientToUpdate.filter(client => !client.status || client.status === 'backlog');
+      updaredClients.inProgress = clientToUpdate.filter(client => client.status && client.status === 'in-progress');
+      updaredClients.complete = clientToUpdate.filter(client => client.status && client.status === 'complete');
+      return { clients: updaredClients };
+    });
+  }
+  componentWillUnmount() {
+    this.drake.destroy();
+  }
   getClients() {
     return [
       ['1','Stark, White and Abbott','Cloned Optimal Architecture', 'in-progress'],
